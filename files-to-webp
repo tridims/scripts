@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Used to convert all images in a directory to webp format
+# the directory is in the current working directory
+
+for file in *.{jpg,jpeg,png}; do
+    if [ -f "$file" ]; then
+        filename="${file%.*}"
+        cwebp "$file" -o "${filename}.webp" -q 100
+        echo "Converted $file to ${filename}.webp"
+    fi
+done

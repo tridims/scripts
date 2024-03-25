@@ -1,0 +1,20 @@
+#!/bin/bash
+# for opening the current git repository in the browser
+
+remote_url=$(git remote get-url origin)
+
+if [[ "$remote_url" == git@* ]]; then
+  remote_url="${remote_url/git@/}"
+  remote_url="${remote_url/\:/\//}"
+  https_url="https://${remote_url}"
+elif [[ "$remote_url" == http* ]]; then
+  https_url=$remote_url
+else
+  echo "Remote URL format is not recognized."
+  exit 1
+fi
+
+xdg-open $https_url
+
+echo "Repository opened in browser: $https_url"
+

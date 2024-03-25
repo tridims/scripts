@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if ! [[ $(id -u) -eq 0 ]]
+then
+    echo "This script can be run as root only, please sudo this script"
+    exit 1
+fi
+
+nvidia_pci_entry=$(lspci | grep -E '(VGA compatible).*(NVIDIA Corporation)')
+nvidia_gpu_type=$(echo $nvidia_pci_entry | grep -oE '(NVIDIA.*])')
+nvidia_pci_id=$(echo $nvidia_pci_entry | grep -oE '([0-9a-f]{4}(:[0-9a-f]{2}){2}.[0-9a-f]{1})')
+
+if [[ -z $nvidia_pci_id ]]
+then
+    echo "No NVIDIA GPU found"
+    exit 1
+fi
+
+echo "---- NVIDIA DRAIN MODE SWITCHER ----"
+echo "Your NVIDIA GPU : $nvidia_gpu_type"
+echo 'Select Option:'
+echo '1. Turn on NVIDIA Drain'
+echo '2. Turn off NVIDIA Drain'
+echo '3. View NVIDIA Drain Status'
+echo -n 'Input (1-3) : '
+read cmd
+
+case $cmd in
+    1)
+        nvidia-smi drain -p $nvidia_pci_id -m 1
+        ;;
+    2)
+        nvidia-smi drain -p $nvidia_pci_id -m 0
+        ;;
+    3)
+        nvidia-smi drain -p $nvidia_pci_id -q
+        ;;
+    *)
+        echo "Invalid input, program exiting..."
+        exit 1
+        ;;
+esac

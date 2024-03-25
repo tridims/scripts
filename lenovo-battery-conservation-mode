@@ -1,0 +1,34 @@
+#!/bin/bash
+
+acpi_path='/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode'
+
+if ! [[ $(id -u) -eq 0 ]]
+then
+    echo "This script can be run as root only, please sudo this script"
+    exit 1
+fi
+
+echo '---- LENOVO Battery Conservation Mode ----'
+echo 'Select Option:'
+echo '1. Turn on Conservation Mode'
+echo '2. Turn off Conservation Mode'
+echo '3. View Conservation Mode Status'
+echo -n 'Input (1-3) : '
+read cmd
+
+if [[ $cmd -lt 1 || $cmd -gt 3 ]]
+then
+  echo 'Wrong input, program exiting...'
+  exit 1
+fi
+
+case $cmd in
+  1)
+    echo 1 | tee ${acpi_path} > /dev/null
+    ;;
+  2)
+    echo 0 | tee ${acpi_path} > /dev/null
+    ;;
+esac
+
+echo "Battery Conservation Mode Status : $(cat ${acpi_path})"

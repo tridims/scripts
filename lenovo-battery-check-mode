@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# ACPI call path
+acpi_path="/proc/acpi/call"
+
+# Check if script is run as root
+if ! [[ $(id -u) -eq 0 ]]
+then
+    echo "This script can be run as root only, please sudo this script"
+    exit 1
+fi
+
+# Make ACPI call
+echo '\_SB.PCI0.LPC0.EC0.GZ44' | tee ${acpi_path} > /dev/null
+
+# Get ACPI call output and remove null bytes
+output=$(cat ${acpi_path} | tr -d '\0')
+
+# Remove unnecessary characters
+#output=${output:10:2}
+
+# Print the mode based on the output
+echo "---- LENOVO SPMO/GZ44 Modes ----"
+case $output in
+  "0x0")
+    echo "Intelligent Cooling"
+    ;;
+  "0x1")
+    echo "Extreme Performance"
+    ;;
+  "0x2")
+    echo "Battery Saving"
+    ;;
+  *)
+    echo "Unknown Mode"
+    ;;
+esac
