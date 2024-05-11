@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+
+# the function of this script is to reorder the manga pages so that it can be used by tachidesk server
+# the current structure is
+# folder_name/
+#   001.jpg
+#   002.jpb
+#   etc...
+
+# will change it so that it is
+# folder_name/
+#   cover.jpg (from the first image in the folder)
+#   folder_name.zip (all the images in the folder compressed to zip)
+
+# after that, the original image will be deleted
+
+import os
+import sys
+import zipfile
+import shutil
+
+
+def convert(folder_name):
+    if not os.path.isdir(folder_name):
+        print("Please specify a valid folder name")
+        return
+
+    # get all the images in the folder
+    images = []
+    for file in os.listdir(folder_name):
+        if file.endswith(".jpg") or file.endswith(".png"):
+            images.append(file)
+
+    # sort the images
+    images.sort()
+
+    # get the cover image
+    cover_image = images[0]
+
+    # create the zip file
+    zip_file = zipfile.ZipFile(folder_name + "/" + folder_name + ".zip", "w")
+    for image in images:
+        zip_file.write(folder_name + "/" + image)
+    zip_file.close()
+
+    # move the zip file and cover image to the parent folder
+    shutil.copy(folder_name + "/" + cover_image, folder_name + "/cover.jpg")
+
+    # delete the original images
+    for image in images:
+        os.remove(folder_name + "/" + image)
+
+def display_help():
+    help_text = """
+Usage: tachidesk-manga-organizer [FOLDER_PATH]
+
+Organize manga files for Tachidesk.
+
+Arguments:
+  FOLDER_PATH  The path to the folder containing the manga files.
+               If not provided, the script will use the current working directory.
+
+Description:
+  This script organizes manga files in a folder structure compatible with Tachidesk.
+  It performs the following steps:
+  1. Retrieves a list of all the image files (JPG or PNG) in each folder.
+  2. Sorts the image files in ascending order based on their names.
+  3. Identifies the first image as the cover image.
+  4. Creates a ZIP file with the same name as the folder and compresses all the images into it.
+  5. Copies the cover image to the folder with the name "cover.jpg".
+  6. Deletes the original image files from the folder.
+
+  The script excludes folders that already contain a ZIP file to avoid reprocessing them.
+
+Examples:
+  tachidesk-manga-organizer
+  tachidesk-manga-organizer /path/to/manga/folder
+"""
+    print(help_text)
+
+if __name__ == "__main__":
+    # Check if a folder path is provided as a command-line argument
+    if len(sys.argv) > 1:
+        folder_path = sys.argv[1]
+        if folder_path in ['-h', '--help']:
+            display_help()
+            sys.exit(0)
+    else:
+        # folder_path = os.getcwd()
+        display_help()
+        sys.exit(0)
+
+    # Check if the specified folder path exists
+    if not os.path.isdir(folder_path):
+        print("Please specify a valid folder path.")
+        sys.exit(1)
+
+    # Change the current directory to the specified folder path
+    os.chdir(folder_path)
+
+    # list all folders in the specified directory
+    folders = []
+    for folder in os.listdir("."):
+        if os.path.isdir(folder):
+            # exclude if in that folder exists a zip file
+            list_file = os.listdir(f"./{folder}")
+            exists = False
+            for file in list_file:
+                if file.endswith(".zip"):
+                    exists = True
+                    break
+
+            if exists:
+                continue
+
+            folders.append(folder)
+
+    # convert all the folders
+    for folder in folders:
+        convert(folder)
+
+    print("Done")

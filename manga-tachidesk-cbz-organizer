@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Get the list of .cbz files in the current directory
+IFS=$'\n' # Set IFS to newline to handle whitespace in filenames
+files=($(find . -maxdepth 1 -type f -name "*.cbz"))
+
+# Loop through each .cbz file
+for file in "${files[@]}"; do
+    # Extract the filename without the extension
+    folder_name=$(basename "$file" .cbz)
+    
+    # Check if the folder already exists
+    if [ -d "$folder_name" ]; then
+        echo "Folder '$folder_name' already exists, skipping..."
+        continue
+    fi
+    
+    # Create the new folder
+    mkdir "$folder_name"
+    
+    # Move the comic file into the new folder
+    mv "$file" "$folder_name"
+    
+    echo "Moved '$file' to '$folder_name'"
+done
+
+echo "All comic files have been moved into their own folders."

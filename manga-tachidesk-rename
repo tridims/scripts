@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+# script for renaming files in a directory
+# it will detect words that are surrounded by [] at the end of the name and remove them
+# example
+# original file name: [Suzuki Akoni] Majimena Aitsu ni Ani Ken no Ore ga Oshiete Yareru Koto 2 (COMIC BAVEL 2016-11) [English] [Noraneko]
+# new file name: [Suzuki Akoni] Majimena Aitsu ni Ani Ken no Ore ga Oshiete Yareru Koto 2 (COMIC BAVEL 2016-11)
+
+import os
+import re
+
+# get the current working directory
+cwd = os.getcwd()
+
+# get the list of files in the directory
+files = os.listdir(cwd)
+
+# loop through the files
+for file in files:
+    # check if the file is a directory
+    if not os.path.isdir(file):
+        continue
+    # get the file name
+    filename = os.path.basename(file)
+    # check if the file name contains []
+    if "[" in filename and "]" in filename:
+        # get the index of the last [
+        index = filename.rfind("[")
+        # get the new file name
+        new_filename = filename[:index]
+        # rename the file
+        try:
+            os.rename(file, new_filename)
+            print("Renamed file: " + filename + " to " + new_filename)
+        except:
+            print("Error renaming file: " + filename)
