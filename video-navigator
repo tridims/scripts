@@ -6,6 +6,9 @@ video_extensions="mp4|avi|mkv|mov|flv|wmv|webm|m4v|mpg|mpeg|3gp|ogv|rm|rmvb|asf|
 # Define the path to the watched videos file in the .config folder
 watched_videos_file="$HOME/.config/watched_videos.txt"
 
+# Define the path to the cursor position file
+cursor_position_file="/tmp/fzf_video_cursor_position"
+
 # Function to open the selected video file with mpv
 open_video() {
     mpv "$1" > /dev/null 2>&1 &
@@ -21,9 +24,23 @@ is_watched() {
     grep -Fxq "$1" "$watched_videos_file"
 }
 
+# Cleanup function to remove the cursor position file on exit
+cleanup() {
+    rm -f "$cursor_position_file"
+}
+
+# Register the cleanup function to be called on exit
+trap cleanup EXIT
+
 # Loop to keep fzf window open for selecting videos
-last_selected_item=""
 while true; do
+
+    # Load the cursor position if the file exists
+    if [[ -f "$cursor_position_file" ]]; then
+      cursor_position=$(($(cat "$cursor_position_file") + 1))
+    else
+      cursor_position=1
+    fi
     # Use fzf to select a video file with a visual indicator for watched videos
     video_file=$(find . -type f -regextype posix-extended -iregex ".*\.(${video_extensions})" | while read -r file; do
         if is_watched "$file"; then
@@ -31,13 +48,12 @@ while true; do
         else
             echo "○ $file"
         fi
-    done | fzf --ansi --preview 'mediainfo {}' --preview-window=right:60%:wrap --marker=">" --pointer=">" --print-query --query="$last_selected_item" | sed 's/^[●○] //')
+    done | fzf --ansi --preview 'mediainfo {}' --preview-window=right:60%:wrap --multi --bind "enter:execute-silent(echo {n} > $cursor_position_file)+accept" --bind "change:first" --bind "load:pos:$cursor_position" | sed 's/^[●○] //')
 
     # Check if a video file was selected
     if [[ -n "$video_file" ]]; then
         open_video "$video_file"
         mark_watched "$video_file"
-        last_selected_item="$video_file"
     else
         # Exit the loop if no video file was selected (e.g., user pressed Esc)
         break
