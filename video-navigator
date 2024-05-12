@@ -22,6 +22,7 @@ is_watched() {
 }
 
 # Loop to keep fzf window open for selecting videos
+last_selected_item=""
 while true; do
     # Use fzf to select a video file with a visual indicator for watched videos
     video_file=$(find . -type f -regextype posix-extended -iregex ".*\.(${video_extensions})" | while read -r file; do
@@ -30,12 +31,13 @@ while true; do
         else
             echo "○ $file"
         fi
-    done | fzf --ansi --preview 'mediainfo {}' --preview-window=right:60%:wrap | sed 's/^[●○] //')
+    done | fzf --ansi --preview 'mediainfo {}' --preview-window=right:60%:wrap --marker=">" --pointer=">" --print-query --query="$last_selected_item" | sed 's/^[●○] //')
 
     # Check if a video file was selected
     if [[ -n "$video_file" ]]; then
         open_video "$video_file"
         mark_watched "$video_file"
+        last_selected_item="$video_file"
     else
         # Exit the loop if no video file was selected (e.g., user pressed Esc)
         break
