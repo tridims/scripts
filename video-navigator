@@ -4,19 +4,25 @@
 video_extensions="mp4|avi|mkv|mov|flv|wmv|webm|m4v|mpg|mpeg|3gp|ogv|rm|rmvb|asf|qt|divx|dv|m2ts|mts|ts|vob|f4v|mxf"
 
 # Define the path to the watched videos file in the .config folder
+config_dir="$HOME/.config/video_selector"
+#watched_videos_file="$config_dir/watched_videos.txt"
 watched_videos_file="$HOME/.config/watched_videos.txt"
 
 # Define the path to the cursor position file
 cursor_position_file="/tmp/fzf_video_cursor_position"
 
+# Create necessary directories and files
+mkdir -p "$config_dir"
+touch "$watched_videos_file"
+
 # Function to open the selected video file with mpv
 open_video() {
-    mpv "$1" > /dev/null 2>&1 &
+    mpv --no-terminal "$1" > /dev/null 2>&1 &
 }
 
-# Function to mark a video as watched
+# Function to mark a video as watched uniquely
 mark_watched() {
-    echo "$1" >> "$watched_videos_file"
+    grep -Fxq "$1" "$watched_videos_file" || echo "$1" >> "$watched_videos_file"
 }
 
 # Function to check if a video has been watched
@@ -32,15 +38,25 @@ cleanup() {
 # Register the cleanup function to be called on exit
 trap cleanup EXIT
 
+# Load the cursor position safely
+load_cursor_position() {
+    if [[ -f "$cursor_position_file" ]]; then
+        cursor_position=$(cat "$cursor_position_file" 2>/dev/null || echo "1")
+        cursor_position=$((cursor_position + 1))
+    else
+        cursor_position=1
+    fi
+}
+
+# Save the cursor position
+save_cursor_position() {
+    echo "$1" > "$cursor_position_file"
+}
+
 # Loop to keep fzf window open for selecting videos
 while true; do
+    load_cursor_position
 
-    # Load the cursor position if the file exists
-    if [[ -f "$cursor_position_file" ]]; then
-      cursor_position=$(($(cat "$cursor_position_file") + 1))
-    else
-      cursor_position=1
-    fi
     # Use fzf to select a video file with a visual indicator for watched videos
     video_file=$(find . -type f -regextype posix-extended -iregex ".*\.(${video_extensions})" | while read -r file; do
         if is_watched "$file"; then
@@ -48,7 +64,14 @@ while true; do
         else
             echo "○ $file"
         fi
-    done | fzf --ansi --preview 'mediainfo {}' --preview-window=right:60%:wrap --multi --bind "enter:execute-silent(echo {n} > $cursor_position_file)+accept" --bind "change:first" --bind "load:pos:$cursor_position" | sed 's/^[●○] //')
+    done | fzf --sort --ansi --preview 'mediainfo {} 2>/dev/null || echo "No preview available"' \
+               --preview-window=right:60%:wrap \
+               --multi \
+               --bind "enter:execute-silent(echo {n} > $cursor_position_file)+accept" \
+               --bind "alt-m:execute-silent(mark_watched {n})+reload()" \
+               --bind "change:first" \
+               --bind "load:pos:$cursor_position" \
+           | sed 's/^[●○] //')
 
     # Check if a video file was selected
     if [[ -n "$video_file" ]]; then

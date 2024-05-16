@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Specify the output file name
+output_file="combined_file.txt"
+
+# Create an empty output file
+> "$output_file"
+
+# Find all .html.markdown files in the current directory and its subdirectories
+markdown_files=$(find . -type f -name "*.html.markdown")
+
+# Iterate through the markdown files
+for file in $markdown_files; do
+  # Append the content of each file to the output file
+  cat "$file" >> "$output_file"
+  
+  # Add a separator between files (optional)
+  echo -e "\n===== End of File: $file =====\n" >> "$output_file"
+done
+
+echo "All .html.markdown files have been combined into $output_file"

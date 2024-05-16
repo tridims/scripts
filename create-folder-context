@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import yaml
+
+def is_text_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='ascii') as f:
+            f.read()
+        return True
+    except UnicodeDecodeError:
+        return False
+
+def create_project_context_file(project_root, output_file, exclude_patterns):
+    project_root = os.path.abspath(project_root)
+    project_name = os.path.basename(project_root)
+
+    project_info = {
+        'project_name': project_name,
+        'root_directory': project_root,
+        'folders': []
+    }
+
+    for root, dirs, files in os.walk(project_root):
+        folder_path = os.path.relpath(root, project_root)
+        folder_name = os.path.basename(root)
+
+        if folder_path == '.':
+            folder_path = ''
+            folder_name = project_name
+
+        if any(exclude_pattern in folder_path for exclude_pattern in exclude_patterns):
+            continue
+
+        folder_info = {
+            'name': folder_name,
+            'path': folder_path,
+            'files': []
+        }
+
+        for file in files:
+            file_path = os.path.join(folder_path, file)
+            if any(exclude_pattern in file_path for exclude_pattern in exclude_patterns):
+                continue
+
+            if is_text_file(os.path.join(project_root, file_path)):
+                with open(os.path.join(project_root, file_path), 'r', encoding='utf-8') as f:
+                    content = f.read()
+                folder_info['files'].append({
+                    'name': file,
+                    'path': file_path,
+                    'content': content
+                })
+
+        if folder_info['files']:
+            project_info['folders'].append(folder_info)
+
+    yaml_output = yaml.dump(project_info, default_flow_style=False, sort_keys=False)
+    print(yaml_output)
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(yaml_output)
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--help':
+        print("Usage: python script.py [project_root] [exclude_patterns...]")
+        print("Generate a project context file in YAML format.")
+        print("Arguments:")
+        print("  project_root       The root directory of the project (default: current directory)")
+        print("  exclude_patterns   Patterns to exclude files/folders (optional)")
+        print("Options:")
+        print("  --help             Show this help message and exit")
+        sys.exit(0)
+
+    project_root = os.getcwd()
+    output_file = "context.yaml"
+    exclude_patterns = []
+
+    if len(sys.argv) > 1:
+        project_root = sys.argv[1]
+
+    if len(sys.argv) > 2:
+        exclude_patterns = sys.argv[2:]
+
+    if not os.path.isdir(project_root):
+        print(f"Error: {project_root} is not a valid directory.")
+        sys.exit(1)
+
+    create_project_context_file(project_root, output_file, exclude_patterns)
+
+if __name__ == '__main__':
+    main()
