@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import sys
 import yaml
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 def is_text_file(file_path):
     try:
@@ -12,7 +15,7 @@ def is_text_file(file_path):
     except UnicodeDecodeError:
         return False
 
-def create_project_context_file(project_root, output_file, exclude_patterns):
+def create_project_context(project_root, exclude_patterns):
     project_root = os.path.abspath(project_root)
     project_name = os.path.basename(project_root)
 
@@ -52,42 +55,62 @@ def create_project_context_file(project_root, output_file, exclude_patterns):
                     'path': file_path,
                     'content': content
                 })
+                print(f"Included file: {file_path}")  # Print the included file name
 
         if folder_info['files']:
             project_info['folders'].append(folder_info)
 
-    yaml_output = yaml.dump(project_info, default_flow_style=False, sort_keys=False)
-    print(yaml_output)
+    return project_info
 
+def export_to_yaml(project_info, output_file):
+    yaml_output = yaml.dump(project_info, default_flow_style=False, sort_keys=False)
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(yaml_output)
 
+def export_to_xml(project_info, output_file):
+    project = ET.Element('project')
+    project.set('name', project_info['project_name'])
+    project.set('root_directory', project_info['root_directory'])
+
+    for folder_info in project_info['folders']:
+        folder = ET.SubElement(project, 'folder')
+        folder.set('name', folder_info['name'])
+        folder.set('path', folder_info['path'])
+
+        for file_info in folder_info['files']:
+            file_element = ET.SubElement(folder, 'file')
+            file_element.set('name', file_info['name'])
+            file_element.set('path', file_info['path'])
+            file_element.text = file_info['content']
+
+    xml_string = minidom.parseString(ET.tostring(project, encoding='utf-8')).toprettyxml(indent="    ")
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(xml_string)
+
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == '--help':
-        print("Usage: python script.py [project_root] [exclude_patterns...]")
-        print("Generate a project context file in YAML format.")
-        print("Arguments:")
-        print("  project_root       The root directory of the project (default: current directory)")
-        print("  exclude_patterns   Patterns to exclude files/folders (optional)")
-        print("Options:")
-        print("  --help             Show this help message and exit")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(description='Generate a project context file in YAML or XML format. This accept a project directory, and embed all text files in the project directory and its subdirectories. I create this script to generate a context file to be used in an LLM.')
+    parser.add_argument('--project-root', default=os.getcwd(), help='The root directory of the project (default: current directory)')
+    parser.add_argument('--output-format', default='yaml', choices=['yaml', 'xml'], help='The output format: "yaml" or "xml" (default: "yaml")')
+    parser.add_argument('--exclude', nargs='*', default=[], help='Patterns to exclude files/folders')
+    args = parser.parse_args()
 
-    project_root = os.getcwd()
-    output_file = "context.yaml"
-    exclude_patterns = []
-
-    if len(sys.argv) > 1:
-        project_root = sys.argv[1]
-
-    if len(sys.argv) > 2:
-        exclude_patterns = sys.argv[2:]
+    project_root = args.project_root
+    output_format = args.output_format
+    exclude_patterns = args.exclude
 
     if not os.path.isdir(project_root):
         print(f"Error: {project_root} is not a valid directory.")
         sys.exit(1)
 
-    create_project_context_file(project_root, output_file, exclude_patterns)
+    project_info = create_project_context(project_root, exclude_patterns)
+
+    output_file = f"context.{output_format}"
+    if output_format == 'yaml':
+        export_to_yaml(project_info, output_file)
+    else:
+        export_to_xml(project_info, output_file)
+
+    print(f"Project context file created: {output_file}")
 
 if __name__ == '__main__':
     main()
