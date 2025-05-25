@@ -7,6 +7,7 @@ acpi_path="/proc/acpi/call"
 if ! [[ $(id -u) -eq 0 ]]
 then
     echo "This script can be run as root only, please sudo this script"
+    exec sudo "$0" "$@"
     exit 1
 fi
 

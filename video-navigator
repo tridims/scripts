@@ -64,8 +64,7 @@ while true; do
         else
             echo "○ $file"
         fi
-    done | fzf --sort --ansi --preview 'mediainfo {} 2>/dev/null || echo "No preview available"' \
-               --preview-window=right:60%:wrap \
+    done | fzf --sort --ansi \
                --multi \
                --bind "enter:execute-silent(echo {n} > $cursor_position_file)+accept" \
                --bind "alt-m:execute-silent(mark_watched {n})+reload()" \

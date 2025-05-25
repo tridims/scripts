@@ -5,18 +5,15 @@
 # download max 5 files in parallel
 # after download, remove the torrent file
 
-# after all the torrents are downloaded, run python convert.py $folder_name for each folder
-# after that, then run python rename.py
-# all the required python script is already present in the working directory
-
 if [ $# -eq 0 ]; then
     torrent_dir="."
 else
     torrent_dir="$1"
 fi
 
-find "$torrent_dir" -maxdepth 1 -type f -name "*.torrent" | xargs -r -P 5 -I {} bash -c '
-    torrent_file="{}"
-    echo "Downloading $torrent_file"
-    aria2c --seed-time=0 "$torrent_file" -d ./downloaded && rm "$torrent_file" || exit 1
+find "$torrent_dir" -maxdepth 1 -type f -name "*.torrent" -print0 | xargs -0 -r -P 5 -I {} bash -c '
+torrent_file="{}"
+echo "Downloading $torrent_file"
+aria2c --async-dns-server=127.0.0.1 --seed-time=0 "$torrent_file" -d./downloaded && rm "$torrent_file" || exit 1
 '
+

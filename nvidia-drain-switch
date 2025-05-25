@@ -6,7 +6,7 @@ then
     exit 1
 fi
 
-nvidia_pci_entry=$(lspci | grep -E '(VGA compatible).*(NVIDIA Corporation)')
+nvidia_pci_entry=$(lspci | grep -E '([VGA|3D] [compatible|controller]).*(NVIDIA Corporation)')
 nvidia_gpu_type=$(echo $nvidia_pci_entry | grep -oE '(NVIDIA.*])')
 nvidia_pci_id=$(echo $nvidia_pci_entry | grep -oE '([0-9a-f]{4}(:[0-9a-f]{2}){2}.[0-9a-f]{1})')
 

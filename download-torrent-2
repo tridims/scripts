@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Enhanced script to download all the torrent files from the current directory or a specified directory
+# using aria2c with --seed-time=0.
+# This script downloads a maximum of 5 files in parallel and displays each download in a separate tmux pane.
+# After download, the torrent file is removed.
+
+# Check for dependencies
+if ! command -v aria2c &>/dev/null; then
+    echo "Error: aria2c is not installed. Please install it and run this script again."
+    exit 1
+fi
+
+if ! command -v tmux &>/dev/null; then
+    echo "Error: tmux is not installed. Please install it and run this script again."
+    exit 1
+fi
+
+# Determine the directory containing the torrent files
+torrent_dir="${1:-.}"
+
+# Function to download a single torrent file
+download_torrent() {
+    local torrent_file="$1"
+    echo "Downloading ${torrent_file}"
+    aria2c --async-dns-server=1.1.1.1 --seed-time=0 "${torrent_file}" -d "./downloaded" && rm "${torrent_file}"
+}
+
+export -f download_torrent
+
+# Start or attach to a tmux session for downloads
+session_name="torrent_downloads"
+
+# Create a new tmux session or attach if already exists
+tmux has-session -t $session_name 2>/dev/null
+if [ $? != 0 ]; then
+    tmux new-session -d -s $session_name -n torrents
+    tmux set-option -g remain-on-exit on
+fi
+
+# Find all .torrent files and start the download process
+find "$torrent_dir" -maxdepth 1 -type f -name "*.torrent" -print0 | xargs -0 -n 1 -P 5 -I {} bash -c '
+    torrent_file="$1"
+    session_name="$2"
+    pane_id=$(tmux list-panes -s -F "#{pane_id}" -t "$session_name" | wc -l)
+    
+    if [ $pane_id -ge 5 ]; then
+        pane_id=$(( (pane_id % 5) + 1 ))
+    else
+        tmux splitw -t $session_name
+        tmux select-layout -t $session_name tiled >/dev/null 2>&1
+    fi
+
+    tmux send-keys -t "${session_name}.${pane_id}" "download_torrent '"'"'${torrent_file}'"'"'" C-m
+' _ {} $session_name
+
+# Finally, attach to the tmux session
+tmux attach -t $session_name
